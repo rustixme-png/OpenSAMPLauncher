@@ -1,43 +1,57 @@
-name: Fox RP Auto-Builder
+name: Build Fox RP Launcher
 
 on:
-  workflow_dispatch: 
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch: # Позволяет запускать сборку вручную
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 6.0.x # Или 7.0/8.0 в зависимости от версии сурса
 
-      - name: Customize Fox RP
-        run: |
-          # 1. Меняем название приложения
-          find . -type f -name "strings.xml" -exec sed -i 's/Open SAMP/Fox RP/g' {} +
-          
-          # 2. Меняем ID пакета везде
-          find . -type f -name "*.gradle" -exec sed -i 's/com.umnicode.samp/com.foxrp.launcher/g' {} +
-          find . -type f -name "*.xml" -exec sed -i 's/com.umnicode.samp/com.foxrp.launcher/g' {} +
-          find . -type f -name "*.java" -exec sed -i 's/com.umnicode.samp/com.foxrp.launcher/g' {} +
+    - name: Customize for Fox RP
+      shell: pwsh
+      run: |
+        # Меняем заголовок в коде (пример для типового C# проекта)
+        Get-ChildItem -Recurse -Filter "*.xaml" | ForEach-Object {
+          (Get-Content $_.FullName) -replace 'OpenSAMPLauncher', 'Fox RP Launcher' | Set-Content $_.FullName
+        }
+        Get-ChildItem -Recurse -Filter "*.cs" | ForEach-Object {
+          (Get-Content $_.FullName) -replace 'OpenSAMPLauncher', 'Fox RP' | Set-Content $_.FullName
+        }
 
-          # 3. Красим в оранжевый неон (заменяем стандартный цвет)
-          find . -type f -name "colors.xml" -exec sed -i 's/#FF5722/#FF8C00/g' {} +
+    - name: Restore dependencies
+      run: dotnet restore
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+    - name: Build Launcher
+      run: dotnet build --configuration Release --no-restore
 
-      - name: Build APK
-        run: ./gradlew assembleDebug
+    - name: Publish (Single File EXE)
+      run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishReadyToRun=true -o ./publish
 
-      - name: Upload Fox RP Launcher
-        uses: actions/upload-artifact@v4
-        with:
-          name: FoxRP_Launcher_Build
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FoxRP-Launcher-Build
+        path: ./publish/*.exe
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/master')
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: Release Fox RP v${{ github.run_number }}
+        files: ./publish/*.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        
