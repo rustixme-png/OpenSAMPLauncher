@@ -1,4 +1,4 @@
-name: Build Fox RP Final Stable
+name: Pure Test Build
 on:
   workflow_dispatch:
 
@@ -16,26 +16,14 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Fox RP Branding
-        run: |
-          # Меняем название проекта в ресурсах
-          find app/src/main/res -name "strings.xml" -exec sed -i 's/OpenSAMP/Fox RP/g' {} +
-          
-          # Устанавливаем оранжевый цвет Primary
-          # Мы меняем цвет только если файл существует, чтобы не ломать билд
-          COLOR_FILE="app/src/main/res/values/colors.xml"
-          if [ -f "$COLOR_FILE" ]; then
-            sed -i 's/<color name="colorPrimary">.*<\/color>/<color name="colorPrimary">#FF8C00<\/color>/g' $COLOR_FILE
-          fi
-
-      - name: Build APK with Gradle
+      - name: Build APK Only
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload Final APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Fox-RP-Stable
-          path: app/build/outputs/apk/debug/*.apk
-          
+      - name: Upload Test APK
+          uses: actions/upload-artifact@v4
+          with:
+            name: OpenSAMP-Pure-Test
+            path: app/build/outputs/apk/debug/*.apk
+            
