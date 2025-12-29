@@ -1,0 +1,54 @@
+name: Build Fox RP Ultimate (New Icon)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Fox RP Branding & Icon
+        run: |
+          # 1. Меняем имя приложения
+          find app/src/main/res -name "strings.xml" -exec sed -i 's/OpenSAMP/Fox RP/g' {} +
+          
+          # 2. Устанавливаем оранжевую тему (#FF8C00)
+          COLOR_FILE="app/src/main/res/values/colors.xml"
+          if [ -f "$COLOR_FILE" ]; then
+            sed -i 's/#.*<\/color>/#FF8C00<\/color>/g' $COLOR_FILE
+          fi
+
+          # 3. Привязываем твой Pastebin
+          find . -type f -name "*.kt" -exec sed -i 's|https://raw.githubusercontent.com/.*/servers.json|https://pastebin.com/raw/rSHgfpgz|g' {} +
+
+          # 4. Установка твоей иконки (Вариант 2)
+          # Я использую прямую ссылку на твое изображение из нашего чата
+          # Если ссылка не сработает, мы просто загрузим файл в твой репозиторий
+          curl -L -o app/src/main/res/mipmap-xxxhdpi/ic_launcher.png "https://storage.googleapis.com/generate-v1-multimodal-files/26204.jpg"
+          
+          # Растягиваем иконку по всем папкам
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+      - name: Build APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload Fox RP Final
+        uses: actions/upload-artifact@v4
+        with:
+          name: Fox-RP-Final-Build
+          path: app/build/outputs/apk/debug/*.apk
+          
